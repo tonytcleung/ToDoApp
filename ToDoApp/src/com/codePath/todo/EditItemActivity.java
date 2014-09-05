@@ -1,17 +1,22 @@
 package com.codePath.todo;
 
-import android.support.v7.app.ActionBarActivity;
+import java.util.Calendar;
+
+import android.app.Activity;
+import android.app.DatePickerDialog;
+import android.app.Dialog;
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
+import android.widget.DatePicker;
 import android.widget.EditText;
 
-public class EditItemActivity extends ActionBarActivity {
-	private String 		itemValue;
+public class EditItemActivity extends Activity {
+	private String 		title;
+	private String		dueDate;
 	private int			position;
-	private EditText	etEditItem;
+	private EditText	etNewItem;
+	private EditText	etNewTimeItem;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -19,23 +24,27 @@ public class EditItemActivity extends ActionBarActivity {
 		setContentView(R.layout.activity_edit_item);
 		
 		// grab values from intent and setup edititem
-		itemValue	= getIntent().getStringExtra("item");
-		position	= getIntent().getIntExtra("position", 0);
-		etEditItem	= (EditText) findViewById(R.id.etEditItem);
+		title			= getIntent().getStringExtra("title");
+		dueDate			= getIntent().getStringExtra("dueDate");
+		position		= getIntent().getIntExtra("position", 0);
+		etNewItem		= (EditText) findViewById(R.id.etNewItem);
+		etNewTimeItem	= (EditText) findViewById(R.id.etNewTimeItem);
 		
 		// setup the edit text
-		setupEditItem();
+		setupNewItem();
 	}
 
 	/**
 	 * save item and finish intent
 	 */
 	public void saveItem(View view) {
-		String newItemValue	= etEditItem.getText().toString();
+		String newItemValue	= etNewItem.getText().toString();
+		String newTimeValue	= etNewTimeItem.getText().toString();
 		
 		// create data intent and finish
 		Intent dataIntent	= new Intent();
-		dataIntent.putExtra("newItem", newItemValue);
+		dataIntent.putExtra("title", newItemValue);
+		dataIntent.putExtra("dueDate", newTimeValue);
 		dataIntent.putExtra("position", position);
 		setResult(RESULT_OK, dataIntent);
 		finish();
@@ -44,27 +53,33 @@ public class EditItemActivity extends ActionBarActivity {
 	/**
 	 * assign the edit item and set position on the cursor
 	 */
-	private void setupEditItem() {
-		etEditItem.setText(itemValue);
-		etEditItem.setSelection(itemValue.length());
+	private void setupNewItem() {
+		etNewTimeItem.setText(dueDate);
+		etNewItem.setText(title);
+		etNewItem.setSelection(title.length());
 	}
-
+	
+	
+    /**
+     * present date picker label
+     * @param view
+     */
+    //TODO should not use deprecated method
+	@Deprecated
+    public void onDateItem(View view) {
+    	showDialog(0);
+    }
+    
 	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		// Inflate the menu; this adds items to the action bar if it is present.
-		getMenuInflater().inflate(R.menu.edit_item, menu);
-		return true;
+	protected Dialog onCreateDialog(int id) {
+
+    	Calendar cal	= Calendar.getInstance();
+		return new DatePickerDialog(this, datePickerListener, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH));
 	}
-
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		// Handle action bar item clicks here. The action bar will
-		// automatically handle clicks on the Home/Up button, so long
-		// as you specify a parent activity in AndroidManifest.xml.
-		int id = item.getItemId();
-		if (id == R.id.action_settings) {
-			return true;
+	private DatePickerDialog.OnDateSetListener datePickerListener = new DatePickerDialog.OnDateSetListener() {
+		public void onDateSet(DatePicker view, int selectedYear, int selectedMonth, int selectedDay) {
+			etNewTimeItem.setText((selectedMonth + 1) + " / " + selectedDay + " / "
+					+ selectedYear);
 		}
-		return super.onOptionsItemSelected(item);
-	}
+	};
 }

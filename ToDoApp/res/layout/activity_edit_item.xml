@@ -13,31 +13,45 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="15dp"
         android:text="@string/edit_item_Label"
         android:textAppearance="?android:attr/textAppearanceLarge" />
 
     <EditText
-        android:id="@+id/etEditItem"
+        android:id="@+id/etNewItem"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/tvEditItemLabel"
-        android:layout_below="@+id/tvEditItemLabel"
-        android:layout_marginTop="16dp"
+        android:layout_alignLeft="@+id/etNewTimeItem"
+        android:layout_below="@+id/etNewTimeItem"
         android:ems="10"
-        android:inputType="textMultiLine" >
-
-        <requestFocus />
-    </EditText>
+        android:hint="@string/title_label"
+        android:paddingTop="10dp" />
 
     <Button
         android:id="@+id/btSave"
-        android:layout_width="wrap_content"
+        android:layout_width="78dp"
         android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/etEditItem"
+        android:layout_alignBaseline="@+id/etNewItem"
+        android:layout_alignBottom="@+id/etNewItem"
+        android:layout_toRightOf="@+id/etNewItem"
         android:onClick="saveItem"
-        android:layout_below="@+id/etEditItem"
-        android:layout_marginTop="31dp"
         android:text="@string/save_button_label" />
+
+    <EditText
+        android:id="@+id/etNewTimeItem"
+        android:layout_width="290dp"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/tvEditItemLabel"
+        android:layout_below="@+id/tvEditItemLabel"
+        android:ems="10"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:hint="@string/due_date_hint"
+        android:longClickable="false"
+        android:onClick="onDateItem"
+        android:paddingTop="10dp" >
+
+        <requestFocus />
+    </EditText>
 
 </RelativeLayout>

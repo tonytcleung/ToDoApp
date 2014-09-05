@@ -1,30 +1,28 @@
 package com.codePath.todo;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
-
-import org.apache.commons.io.FileUtils;
+import java.util.Calendar;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.app.Activity;
+import android.app.DatePickerDialog;
+import android.app.Dialog;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
-import android.widget.ArrayAdapter;
+import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.ListView;
 
 
-public class ToDoActivity extends ActionBarActivity {
-	private ArrayList<String> 		todoItems;
-	private ArrayAdapter<String>	todoAdapter;
+public class ToDoActivity extends Activity {
+	private ArrayList<Reminder> 	reminderList;
+	private ReminderListAdapter 	reminderAdapter;
 	private ListView 				lvItems;
 	private EditText				etNewItem;
+	private EditText				etTimeItem;
 	
 	private final int 				EDIT_REQUEST_CODE	= 20;
 
@@ -33,12 +31,12 @@ public class ToDoActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_todo);
 
-    	etNewItem	= (EditText) findViewById(R.id.etNewItem);
-    	readItems();
-        todoAdapter	= new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, todoItems);
         lvItems		= (ListView) findViewById(R.id.lvItems);
-        lvItems.setAdapter(todoAdapter);
-        
+    	etNewItem	= (EditText) findViewById(R.id.etNewItem);
+    	etTimeItem	= (EditText) findViewById(R.id.etTimeItem);
+    	readItems();
+    	resetDefaults();
+    	
         setupListViewListener();
     }
 
@@ -50,13 +48,13 @@ public class ToDoActivity extends ActionBarActivity {
 			 * remove item of the array list and notify adaptor
 			 */
 			public boolean onItemLongClick(AdapterView<?> adaptor, View item, int position, long id) {
-				todoItems.remove(position);
-				todoAdapter.notifyDataSetChanged();
-				// write to file
-				writeItems();
+				Reminder reminder	= reminderList.remove(position);
+				reminderAdapter.notifyDataSetChanged();
+				
+				// remove from db
+				reminder.delete();
 				return true;
 			}
-		
 		});
 		
 		lvItems.setOnItemClickListener(new OnItemClickListener() {
@@ -66,8 +64,13 @@ public class ToDoActivity extends ActionBarActivity {
 			 */
 			@Override
 			public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-				Intent intent	= new Intent(ToDoActivity.this, EditItemActivity.class);
-				intent.putExtra("item", todoItems.get(position));
+				Intent intent		= new Intent(ToDoActivity.this, EditItemActivity.class);
+				
+				//TODO should use parcels to pass an object
+				// set the title, dueDate and reminder as extra
+				Reminder reminder	= reminderList.get(position);
+				intent.putExtra("title", reminder.title);
+				intent.putExtra("dueDate", reminder.dueDate);
 				intent.putExtra("position", position);
 				startActivityForResult(intent, EDIT_REQUEST_CODE);
 			}
@@ -78,16 +81,21 @@ public class ToDoActivity extends ActionBarActivity {
      * update the 
      */
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
-    	// make srue that it is the same request code is the edit request code
+    	// make sure that it is the same request code is the edit request code
     	if (resultCode == RESULT_OK && requestCode == EDIT_REQUEST_CODE) {
     		// grab the position and newItem
-    		int position	= intent.getExtras().getInt("position");
-    		String newItem	= intent.getExtras().getString("newItem");
+    		int position		= intent.getExtras().getInt("position");
+    		String title		= intent.getExtras().getString("title");
+    		String dueDate		= intent.getExtras().getString("dueDate");
+    		
+    		Reminder reminder	= new Reminder(title, dueDate);
     		
     		// set the new item and write to file and notify set changed
-    		todoItems.set(position, newItem);
-    		todoAdapter.notifyDataSetChanged();
-    		writeItems();
+    		reminderList.set(position, reminder);
+    		reminderAdapter.notifyDataSetChanged();
+    		
+    		// save edits
+    		reminder.save();
     	}
     }
 
@@ -95,63 +103,64 @@ public class ToDoActivity extends ActionBarActivity {
      * read file from android for the list
      */
     private void readItems() {
-    	File filesDir	= getFilesDir();
-    	File todoFile 	= new File(filesDir, "todo.txt");
-    	
-    	// attempt to load the files
-    	try {
-    		todoItems	= new ArrayList<String>(FileUtils.readLines(todoFile));
-    	}
-    	// if they don't exist, then create them
-    	catch (IOException e) {
-    		todoItems	= new ArrayList<String>();
-    	}
+		// Construct the data source
+    	reminderList				= Reminder.getAllReminders();
+		// Create the adapter to convert the array to views
+    	reminderAdapter				= new ReminderListAdapter(this, reminderList);
+		// Attach the adapter to a ListView
+		lvItems.setAdapter(reminderAdapter);
     }
     
-    private void writeItems() {
-    	File filesDir	= getFilesDir();
-    	File todoFile 	= new File(filesDir, "todo.txt");
+    /**
+     * resets the fields to defaults
+     */
+	private void resetDefaults() {
+    	// reset text label
+    	etNewItem.setText("");
     	
-    	// attempt to load the files
-    	try {
-    		FileUtils.writeLines(todoFile, todoItems);
-    	}
-    	// if they don't exist, then create them
-    	catch (IOException e) {
-    		e.printStackTrace();
-    	}
-    }
+    	// reset the date label to current date
+    	Calendar cal	= Calendar.getInstance();
+    	etTimeItem.setText((cal.get(Calendar.MONTH) + 1) + " / " + cal.get(Calendar.DAY_OF_MONTH) + " / " + cal.get(Calendar.YEAR));
+	}
 
     /**
-     * Add et text to adaptor and clear out et
+     * Add new reminder to adapter
      * @param view
      */
+	//TODO need to resort array
     public void onAddedItem(View view) {
-    	String itemText	= etNewItem.getText().toString();
-    	todoAdapter.add(itemText);
+    	String itemText		= etNewItem.getText().toString();
+    	String dateText		= etTimeItem.getText().toString();
     	
-    	etNewItem.setText("");
-    	// write to file
-    	writeItems();
+    	// create reminder, add to adapter and save
+    	Reminder reminder	= new Reminder(itemText, dateText); 
+    	reminderAdapter.add(reminder);
+    	reminder.save();
+    	
+    	// reset defaults;
+    	resetDefaults();
     }
     
-
+    /**
+     * present date picker label
+     * @param view
+     */
+    //TODO should not use deprecated method
+	@Deprecated
+    public void onDateItem(View view) {
+    	showDialog(0);
+    }
+    
 	@Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.to_do, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
+	protected Dialog onCreateDialog(int id) {
+    	Calendar cal	= Calendar.getInstance();
+		return new DatePickerDialog(this, datePickerListener, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH));
+	}
+	
+	private DatePickerDialog.OnDateSetListener datePickerListener = new DatePickerDialog.OnDateSetListener() {
+		public void onDateSet(DatePicker view, int selectedYear, int selectedMonth, int selectedDay) {
+			etTimeItem.setText((selectedMonth + 1) + " / " + selectedDay + " / "
+					+ selectedYear);
+		}
+	};
 }
